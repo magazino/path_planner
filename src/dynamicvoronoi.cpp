@@ -3,6 +3,9 @@
 #include <math.h>
 #include <iostream>
 
+// to get output functionalities
+#include <ros/ros.h>
+
 using namespace HybridAStar;
 
 DynamicVoronoi::DynamicVoronoi() {
@@ -364,6 +367,8 @@ void DynamicVoronoi::visualize(const char *filename) {
   if (!F) {
     std::cerr << "could not open 'result.pgm' for writing!\n";
     return;
+  } else {
+    ROS_INFO_STREAM("Opened file "<<filename);
   }
   fprintf(F, "P6\n");
   fprintf(F, "%d %d 255\n", sizeX, sizeY);

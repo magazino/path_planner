@@ -1,5 +1,7 @@
 #ifndef CONSTANTS
 #define CONSTANTS
+
+#include <algorithm>
 /*!
    \file constants.h
    \brief This is a collection of constants that are used throughout the project.
@@ -30,13 +32,15 @@ namespace Constants {
 // CONFIG FLAGS
 
 /// A flag for additional debugging output via `std::cout`
-static const bool coutDEBUG = 0;
+static const bool coutDEBUG = true;
 /// A flag for the mode (true = manual; false = dynamic). Manual for static map or dynamic for dynamic map.
-static const bool manual = 1;
+static const bool manual = true;
 /// A flag for the visualization of 3D nodes (true = on; false = off)
-static const bool visualization = 0 * manual;
+//static const bool visualization = 1 * manual;
+static const bool visualization = true;
 /// A flag for the visualization of 2D nodes (true = on; false = off)
-static const bool visualization2D = 0 * manual;
+//static const bool visualization2D = 1 * manual;
+static const bool visualization2D = false;
 /// A flag to toggle reversing (true = on; false = off)
 static const bool reverse = true;
 /// A flag to toggle the connection of the path via Dubin's shot (true = on; false = off)
@@ -60,13 +64,17 @@ static const int iterations = 30000;
 /// [m] --- Uniformly adds a padding around the vehicle
 static const double bloating = 0;
 /// [m] --- The width of the vehicle
-static const double width = 1.75 + 2 * bloating;
+static const double width = 0.6 + 2 * bloating;
+//static const double width = 1.75 + 2 * bloating;
 /// [m] --- The length of the vehicle
-static const double length = 2.65 + 2 * bloating;
+static const double length = 1.604 + 2 * bloating;
+//static const double length = 2.65 + 2 * bloating;
 /// [m] --- The minimum turning radius of the vehicle
+//static const float r = 6;
 static const float r = 6;
 /// [m] --- The number of discretizations in heading
-static const int headings = 72;
+//static const int headings = 72;
+static const int headings = 18;
 /// [°] --- The discretization value of the heading (goal condition)
 static const float deltaHeadingDeg = 360 / (float)headings;
 /// [c*M_PI] --- The discretization value of heading (goal condition)
@@ -74,7 +82,10 @@ static const float deltaHeadingRad = 2 * M_PI / (float)headings;
 /// [c*M_PI] --- The heading part of the goal condition
 static const float deltaHeadingNegRad = 2 * M_PI - deltaHeadingRad;
 /// [m] --- The cell size of the 2D grid of the world
-static const float cellSize = 1;
+static const float cellSize = 0.05f;//0.2f;//1.f;
+
+// round node coordinates up to the following multiples of the cell size
+static const int nodeStepSize = 2;
 /*!
   \brief [m] --- The tie breaker breaks ties between nodes expanded in the same cell
 
@@ -97,9 +108,9 @@ static const float penaltyReversing = 2.0;
 /// [#] --- A movement cost penalty for change of direction (changing from primitives < 3 to primitives > 2)
 static const float penaltyCOD = 2.0;
 /// [m] --- The distance to the goal when the analytical solution (Dubin's shot) first triggers
-static const float dubinsShotDistance = 100;
+static const float dubinsShotDistance = 2;//100;
 /// [m] --- The step size for the analytical solution (Dubin's shot) primarily relevant for collision checking
-static const float dubinsStepSize = 1;
+static const float dubinsStepSize = 0.2f;
 
 
 // ______________________
@@ -114,10 +125,15 @@ static const int dubinsArea = dubinsWidth * dubinsWidth;
 // _________________________
 // COLLISION LOOKUP SPECIFIC
 
-/// [m] -- The bounding box size length and width to precompute all possible headings
-static const int bbSize = std::ceil((sqrt(width * width + length* length) + 4) / cellSize);
+/// [cell] -- The bounding box size length and width to precompute all possible headings
+/// todo: why was 4 added on top?
+/// changed to [cell] units -> length of diagonal axis of BB in cells
+//static const int bbSize = std::ceil((sqrt(width * width + length* length) + 4) / cellSize);
+static const int bbSize = std::ceil((sqrt(width * width + length* length) + 0.3) / cellSize);
+
 /// [#] --- The sqrt of the number of discrete positions per cell
-static const int positionResolution = 10;
+static const int positionResolution = 1;
+//static const int positionResolution = 2;
 /// [#] --- The number of discrete positions per cell
 static const int positions = positionResolution * positionResolution;
 /// A structure describing the relative position of the occupied cell based on the center of the vehicle
@@ -127,22 +143,34 @@ struct relPos {
   /// the y position relative to the center
   int y;
 };
+
+template<typename T> constexpr
+T const& const_max(T const& a, T const& b) {
+  return a > b ? a : b;
+}
+
+const int maxposlength = (int)(const_max<float>(HybridAStar::Constants::length,HybridAStar::Constants::width)*
+                               const_max<float>(HybridAStar::Constants::length,HybridAStar::Constants::width)/
+                               (HybridAStar::Constants::cellSize*HybridAStar::Constants::cellSize));
+
 /// A structure capturing the lookup for each theta configuration
 struct config {
   /// the number of cells occupied by this configuration of the vehicle
   int length;
   /*!
-     \var relPos pos[64]
+     \var relPos pos[64] -> 512 with current configuartion, as 0.6*1.604/(0.05^2) = 385
      \brief The maximum number of occupied cells
-     \todo needs to be dynamic
+     \todo needs to be dynamic -> maximum dimension^2/cell length^2 (assuming we do not check on subcell level)
   */
-  relPos pos[64];
+//  relPos pos[64];
+//  relPos pos[Constants::maxposlength];
+  relPos pos[bbSize*bbSize];
 };
 
 // _________________
 // SMOOTHER SPECIFIC
 /// [m] --- The minimum width of a safe road for the vehicle at hand
-static const float minRoadWidth = 2;
+static const float minRoadWidth = 2.0;
 
 // ____________________________________________
 // COLOR DEFINITIONS FOR VISUALIZATION PURPOSES

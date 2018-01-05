@@ -1,4 +1,5 @@
 #include "node3d.h"
+#include "constants.h"
 
 using namespace HybridAStar;
 
@@ -11,9 +12,33 @@ const int Node3D::dir = 3;
 //const float Node3D::dt[] = { 0,         0.10472,   -0.10472};
 
 // R = 6, 6.75 DEG
-const float Node3D::dy[] = { 0,        -0.0415893,  0.0415893};
-const float Node3D::dx[] = { 0.7068582,   0.705224,   0.705224};
+//const float Node3D::dy[] = { 0,        -0.0415893,  0.0415893};
+//const float Node3D::dx[] = { 0.7068582,   0.705224,   0.705224};
+//const float Node3D::dt[] = { 0,         0.1178097,   -0.1178097};
+
+const float sizing_factor = 20.0;
+const float Node3D::dy[] = { 0,        -0.0415893*sizing_factor,  0.0415893*sizing_factor};
+const float Node3D::dx[] = { 0.7068582*sizing_factor,   0.705224*sizing_factor,   0.705224*sizing_factor};
 const float Node3D::dt[] = { 0,         0.1178097,   -0.1178097};
+
+//const float Node3D::dy[] = { 0,        -0.5,  0.5};
+//const float Node3D::dx[] = { 1,   1,   1};
+//const float Node3D::dt[] = { 0,         0.1178097,   -0.1178097};
+
+
+// R = 0.5, 6.75 DEG
+//const float step_length = std::sqrt(2*std::pow(HybridAStar::Constants::cellSize,2))/2;
+//// half the cell size was used according to the author: https://github.com/karlkurzer/path_planner/issues/4
+//const float step_length_halfed = step_length/2;
+//const float max_turn_angle = 6.75*M_PI/180;
+//const float sin_max_turn_angle = std::sin(max_turn_angle);
+//const float cos_max_turn_angle = std::cos(max_turn_angle);
+//const float Node3D::dy[] = { 0,        -sin_max_turn_angle*step_length_halfed,  sin_max_turn_angle*step_length_halfed};
+//const float Node3D::dx[] = { step_length,   cos_max_turn_angle*step_length,   cos_max_turn_angle*step_length};
+//const float Node3D::dt[] = { 0,         max_turn_angle,   -max_turn_angle};
+//const float Node3D::dy[] = { 0,        -sin_max_turn_angle*Constants::r,  sin_max_turn_angle*Constants::r};
+//const float Node3D::dx[] = { step_length,   cos_max_turn_angle*Constants::r,   cos_max_turn_angle*Constants::r};
+//const float Node3D::dt[] = { 0,         max_turn_angle,   -max_turn_angle};
 
 // R = 3, 6.75 DEG
 //const float Node3D::dy[] = { 0,        -0.0207946, 0.0207946};

@@ -54,10 +54,18 @@ int main(int argc, char** argv) {
     message("mode: ", "auto");
   }
 
-  ros::init(argc, argv, "a_star");
+  ros::init(argc, argv, "hybrid_astar");
+
+  ros::NodeHandle nh("~");
+
+#ifndef NDEBUG
+  // give GDB time to attach
+  ros::Duration(3).sleep();
+#endif
 
   HybridAStar::Planner hy;
 
-  ros::spin();
+  while (ros::ok())
+    ros::spin();
   return 0;
 }

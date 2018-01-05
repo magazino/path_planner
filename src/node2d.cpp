@@ -7,6 +7,9 @@ const int Node2D::dir = 8;
 // possible movements
 const int Node2D::dx[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 const int Node2D::dy[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+// reduced by factor of 20 to original as our cell size is smaller by a factor of 20
+//const int Node2D::dx[] = { -0.05, -0.05, 0, 0.05, 0.05, 0.05, 0, -0.05 };
+//const int Node2D::dy[] = { 0, 0.05, 0.05, 0.05, 0, -0.05, -0.05, -0.05 };
 
 //###################################################
 //                                         IS ON GRID

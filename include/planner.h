@@ -23,27 +23,99 @@
 
 namespace HybridAStar {
 /*!
+    \brief The PlannerBase: contains base interfaces for the hybrid A* algorithm, used by node and navigation stack
+           plugin implementation
+*/
+class PlannerBase {
+public:
+ /// The default constructor
+ PlannerBase();
+
+ /*!
+    \brief Initializes the collision as well as heuristic lookup table
+    \todo probably removed
+ */
+ void initializeLookups();
+
+ /*!
+    \brief Sets the map e.g. through a callback from a subscriber listening to map updates.
+    \param map the map or occupancy grid
+ */
+ virtual void setMap(const nav_msgs::OccupancyGrid &map);
+
+ /*!
+    \brief setStart
+    \param start the start pose
+ */
+ virtual void setStart(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& start);
+
+ /*!
+    \brief setGoal
+    \param goal the goal pose
+ */
+ virtual void setGoal(const geometry_msgs::PoseStamped::ConstPtr& goal);
+
+ /*!
+    \brief The central function entry point making the necessary preparations to start the planning.
+ */
+ virtual void plan();
+
+protected:
+ /// A listener that awaits transforms
+ tf::TransformListener listener;
+ /// A transform for moving start positions
+ tf::StampedTransform transform;
+ /// The smoother used for optimizing the path
+ Smoother smoother;
+ /// The path produced by the hybrid A* algorithm
+ Path path;
+ /// The path smoothed and ready for the controller
+ Path smoothedPath = Path(true);
+ /// The visualization used for search visualization
+ Visualize visualization;
+ /// The collission detection for testing specific configurations
+ CollisionDetection configurationSpace;
+ /// The voronoi diagram
+ DynamicVoronoi voronoiDiagram;
+ /// A pointer to the grid the planner runs on
+ nav_msgs::OccupancyGrid::Ptr grid;
+ /// The start pose set through RViz
+ geometry_msgs::PoseWithCovarianceStamped start;
+ /// The goal pose set through RViz
+ geometry_msgs::PoseStamped goal;
+ /// Flags for allowing the planner to plan
+ bool validStart = false;
+ /// Flags for allowing the planner to plan
+ bool validGoal = false;
+ /// A lookup table for configurations of the vehicle and their spatial occupancy enumeration
+// Constants::config collisionLookup[Constants::headings * Constants::positions];
+ /// A lookup of analytical solutions (Dubin's paths)
+ float* dubinsLookup = new float [Constants::headings * Constants::headings * Constants::dubinsWidth * Constants::dubinsWidth];
+
+ /// Stored path nodes (to faciliate access for visualization)
+// std::unordered_map<int,Node3D> nodes3D;
+// std::unordered_map<int,Node2D> nodes2D;
+};
+
+/*!
    \brief A class that creates the interface for the hybrid A* algorithm.
 
     It inherits from `ros::nav_core::BaseGlobalPlanner` so that it can easily be used with the ROS navigation stack
    \todo make it actually inherit from nav_core::BaseGlobalPlanner
 */
-class Planner {
+class Planner : protected PlannerBase {
  public:
   /// The default constructor
   Planner();
 
-  /*!
-     \brief Initializes the collision as well as heuristic lookup table
-     \todo probably removed
-  */
-  void initializeLookups();
-
+  // in order to be able to bind subscriber callbacks
   /*!
      \brief Sets the map e.g. through a callback from a subscriber listening to map updates.
      \param map the map or occupancy grid
   */
-  void setMap(const nav_msgs::OccupancyGrid::Ptr map);
+  void setMap(const nav_msgs::OccupancyGridPtr& map) {
+    PlannerBase::setMap(*map);
+  }
 
   /*!
      \brief setStart
@@ -55,7 +127,9 @@ class Planner {
      \brief setGoal
      \param goal the goal pose
   */
-  void setGoal(const geometry_msgs::PoseStamped::ConstPtr& goal);
+  void setGoal(const geometry_msgs::PoseStamped::ConstPtr& goal) {
+    PlannerBase::setGoal(goal);
+  }
 
   /*!
      \brief The central function entry point making the necessary preparations to start the planning.
@@ -63,46 +137,16 @@ class Planner {
   void plan();
 
  private:
-  /// The node handle
-  ros::NodeHandle n;
   /// A publisher publishing the start position for RViz
   ros::Publisher pubStart;
+  /// The node handle
+  ros::NodeHandle n;
   /// A subscriber for receiving map updates
   ros::Subscriber subMap;
   /// A subscriber for receiving goal updates
   ros::Subscriber subGoal;
   /// A subscriber for receiving start updates
   ros::Subscriber subStart;
-  /// A listener that awaits transforms
-  tf::TransformListener listener;
-  /// A transform for moving start positions
-  tf::StampedTransform transform;
-  /// The path produced by the hybrid A* algorithm
-  Path path;
-  /// The smoother used for optimizing the path
-  Smoother smoother;
-  /// The path smoothed and ready for the controller
-  Path smoothedPath = Path(true);
-  /// The visualization used for search visualization
-  Visualize visualization;
-  /// The collission detection for testing specific configurations
-  CollisionDetection configurationSpace;
-  /// The voronoi diagram
-  DynamicVoronoi voronoiDiagram;
-  /// A pointer to the grid the planner runs on
-  nav_msgs::OccupancyGrid::Ptr grid;
-  /// The start pose set through RViz
-  geometry_msgs::PoseWithCovarianceStamped start;
-  /// The goal pose set through RViz
-  geometry_msgs::PoseStamped goal;
-  /// Flags for allowing the planner to plan
-  bool validStart = false;
-  /// Flags for allowing the planner to plan
-  bool validGoal = false;
-  /// A lookup table for configurations of the vehicle and their spatial occupancy enumeration
-  Constants::config collisionLookup[Constants::headings * Constants::positions];
-  /// A lookup of analytical solutions (Dubin's paths)
-  float* dubinsLookup = new float [Constants::headings * Constants::headings * Constants::dubinsWidth * Constants::dubinsWidth];
 };
 }
 #endif // PLANNER_H

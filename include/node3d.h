@@ -18,12 +18,18 @@ class Node3D {
   Node3D(): Node3D(0, 0, 0, 0, 0, nullptr) {}
   /// Constructor for a node with the given arguments
   Node3D(float x, float y, float t, float g, float h, const Node3D* pred, int prim = 0) {
-    this->x = x;
-    this->y = y;
-    this->t = t;
-    this->g = g;
-    this->h = h;
-    this->pred = pred;
+    this->setX(x);
+    this->setY(y);
+    this->setT(t);
+    this->setG(g);
+    this->setH(h);
+    this->setPred(pred);
+//    this->x = x;
+//    this->y = y;
+//    this->t = t;
+//    this->g = g;
+//    this->h = h;
+//    this->pred = pred;
     this->o = false;
     this->c = false;
     this->idx = -1;
@@ -54,11 +60,18 @@ class Node3D {
   /// determine whether the node is open
   const Node3D* getPred() const { return pred; }
 
+  float roundToMultiple(float pos)
+  {
+      return std::floor(pos/Constants::nodeStepSize)*Constants::nodeStepSize;
+  }
+
   // SETTER METHODS
   /// set the x position
   void setX(const float& x) { this->x = x; }
+//  void setX(const float& x) { this->x = roundToMultiple(x); }
   /// set the y position
   void setY(const float& y) { this->y = y; }
+//  void setY(const float& y) { this->y = roundToMultiple(y); }
   /// set the heading theta
   void setT(const float& t) { this->t = t; }
   /// set the cost-so-far (real value)

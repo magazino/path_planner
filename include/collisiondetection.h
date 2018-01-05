@@ -86,12 +86,18 @@ class CollisionDetection {
   /*!
      \brief updates the grid with the world map
   */
-  void updateGrid(nav_msgs::OccupancyGrid::Ptr map) {grid = map;}
+  void updateGrid(nav_msgs::OccupancyGrid::Ptr map) {
+    grid = nav_msgs::OccupancyGrid::Ptr(new nav_msgs::OccupancyGrid(*map));
+  }
 
  private:
   /// The occupancy grid
   nav_msgs::OccupancyGrid::Ptr grid;
   /// The collision lookup table
+  ///  -> each of the array elements contains a lookup table for the heading in question at the given subcell which tells how much space the robot occupies
+  ///     get added on top the real world position to get the space occupied by the robot
+  ///     indexing: iY -> iX -> iT
+  ///     calculating index: int idx = iY * Constants::positionResolution * Constants::headings + iX * Constants::headings + iT;
   Constants::config collisionLookup[Constants::headings * Constants::positions];
 };
 }

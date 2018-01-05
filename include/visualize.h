@@ -11,6 +11,9 @@
 
 #include "node3d.h"
 #include "node2d.h"
+
+#include <unordered_map>
+
 namespace HybridAStar {
 class Node3D;
 class Node2D;
@@ -37,9 +40,9 @@ class Visualize {
     pubNodes2DCosts = n.advertise<visualization_msgs::MarkerArray>("/visualizeNodes2DCosts", 100);
 
     // CONFIGURE THE CONTAINER
-    poses3D.header.frame_id = "path";
-    poses3Dreverse.header.frame_id = "path";
-    poses2D.header.frame_id = "path";
+    poses3D.header.frame_id = "map";
+    poses3Dreverse.header.frame_id = "map";
+    poses2D.header.frame_id = "map";
   }
 
   // CLEAR VISUALIZATION
@@ -55,7 +58,7 @@ class Visualize {
   void publishNode3DPoses(Node3D& node);
   // PUBLISH THE COST FOR A 3D NODE TO RViz
   /// Publishes the minimum of the cost of all nodes in a 2D grid cell
-  void publishNode3DCosts(Node3D* nodes, int width, int height, int depth);
+  void publishNode3DCosts(std::unordered_map<int,Node3D>& nodes, int width, int height, int depth);
 
   // PUBLISH A SINGEL/ARRAY 2D NODE TO RViz
   /// Publishes a single node to RViz, usually the one currently being expanded
@@ -64,7 +67,7 @@ class Visualize {
   void publishNode2DPoses(Node2D& node);
   // PUBLISH THE COST FOR A 2D NODE TO RViz
   /// Publishes the minimum of the cost of all nodes in a 2D grid cell
-  void publishNode2DCosts(Node2D* nodes, int width, int height);
+  void publishNode2DCosts(std::unordered_map<int,Node2D>& nodes, int width, int height);
 
  private:
   /// A handle to the ROS node

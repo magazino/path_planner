@@ -17,8 +17,10 @@ class Node2D {
   Node2D(): Node2D(0, 0, 0, 0, nullptr) {}
   /// Constructor for a node with the given arguments
   Node2D(int x, int y, float g, float h, Node2D* pred) {
-    this->x = x;
-    this->y = y;
+//    this->x = x;
+//    this->y = y;
+    this->setX(x);
+    this->setY(y);
     this->g = g;
     this->h = h;
     this->pred = pred;
@@ -49,11 +51,18 @@ class Node2D {
   /// get a pointer to the predecessor
   Node2D* getPred() const { return pred; }
 
+  float roundToMultiple(float pos)
+  {
+      return std::floor(pos/Constants::nodeStepSize)*Constants::nodeStepSize;
+  }
+
   // SETTER METHODS
   /// set the x position
   void setX(const int& x) { this->x = x; }
+//  void setX(const int& x) { this->x = roundToMultiple(x); }
   /// set the y position
   void setY(const int& y) { this->y = y; }
+//  void setY(const int& y) { this->y = roundToMultiple(y); }
   /// set the cost-so-far (real value)
   void setG(const float& g) { this->g = g; }
   /// set the cost-to-come (heuristic value)

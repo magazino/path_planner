@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(hybrid_astar)
 
+SET(CMAKE_BUILD_TYPE Release)
 
 ## C++11
 include(CheckCXXCompilerFlag)
@@ -19,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
     rospy
     std_msgs
     tf
+    pcl_ros
     )
 
 set(SOURCES
@@ -77,7 +79,10 @@ add_executable(hybrid_astar src/main.cpp ${HEADERS} ${SOURCES})
 target_link_libraries(hybrid_astar ${catkin_LIBRARIES})
 target_link_libraries(hybrid_astar ${OMPL_LIBRARIES})
 
-install(TARGETS ${PROJECT_NAME} tf_broadcaster
+add_library(hybrid_astar_planner_plugin src/hybrid_astar_planner_plugin.cpp ${HEADERS} ${SOURCES})
+target_link_libraries(hybrid_astar_planner_plugin ${catkin_LIBRARIES} ${OMPL_LIBRARIES})
+
+install(TARGETS ${PROJECT_NAME} tf_broadcaster hybrid_astar_planner_plugin
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -86,3 +91,11 @@ install(TARGETS ${PROJECT_NAME} tf_broadcaster
 install(DIRECTORY launch/
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
     )
+
+install(DIRECTORY maps/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/maps
+  )
+
+install(FILES hybrid_astar_planner.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  )

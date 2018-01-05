@@ -3,6 +3,7 @@
 using namespace HybridAStar;
 
 CollisionDetection::CollisionDetection() {
+  ROS_INFO_STREAM("Building the collision lookup table");
   this->grid = nullptr;
   Lookup::collisionLookup(collisionLookup);
 }
@@ -31,16 +32,23 @@ CollisionDetection::CollisionDetection() {
 bool CollisionDetection::configurationTest(float x, float y, float t) {
   int X = (int)x;
   int Y = (int)y;
+  // get index of subcell closest to node
   int iX = (int)((x - (long)x) * Constants::positionResolution);
   iX = iX > 0 ? iX : 0;
   int iY = (int)((y - (long)y) * Constants::positionResolution);
   iY = iY > 0 ? iY : 0;
+
+  // get discretized heading closest to actual heading
   int iT = (int)(t / Constants::deltaHeadingRad);
   int idx = iY * Constants::positionResolution * Constants::headings + iX * Constants::headings + iT;
   int cX;
   int cY;
 
+  // check if the robot collides with anything if it occupies the given cell (collisionLookup
+  // contains all positions occupied by the robot when it is facing in the given discrete heading
+  // at the given subcell position)
   for (int i = 0; i < collisionLookup[idx].length; ++i) {
+    // total map position
     cX = (X + collisionLookup[idx].pos[i].x);
     cY = (Y + collisionLookup[idx].pos[i].y);
 
