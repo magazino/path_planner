@@ -59,17 +59,34 @@ void Path::updatePath(std::vector<Node3D> nodePath) {
 
   return;
 }
+
+//###################################################
+//                           GENERATE NAVIGATION PATH
+//###################################################
+// __________
+// TRACE PATH
+void Path::generatePath(std::vector<Node3D> nodePath) {
+  path.header.stamp = ros::Time::now();
+
+  for (int i = 0; i < nodePath.size(); ++i) {
+    addVehiclePose(nodePath[i]);
+  }
+
+  return;
+}
+
 // ___________
 // ADD SEGMENT
 void Path::addSegment(const Node3D& node) {
   geometry_msgs::PoseStamped vertex;
+  vertex.header.frame_id = "map";
   vertex.pose.position.x = node.getX() * Constants::cellSize;
   vertex.pose.position.y = node.getY() * Constants::cellSize;
   vertex.pose.position.z = 0;
   vertex.pose.orientation.x = 0;
   vertex.pose.orientation.y = 0;
   vertex.pose.orientation.z = 0;
-  vertex.pose.orientation.w = 0;
+  vertex.pose.orientation.w = 1;
   path.poses.push_back(vertex);
 }
 
@@ -83,7 +100,7 @@ void Path::addNode(const Node3D& node, int i) {
     pathNode.action = 3;
   }
 
-  pathNode.header.frame_id = "path";
+  pathNode.header.frame_id = "map";
   pathNode.header.stamp = ros::Time(0);
   pathNode.id = i;
   pathNode.type = visualization_msgs::Marker::SPHERE;
@@ -115,7 +132,7 @@ void Path::addVehicle(const Node3D& node, int i) {
     pathVehicle.action = 3;
   }
 
-  pathVehicle.header.frame_id = "path";
+  pathVehicle.header.frame_id = "map";
   pathVehicle.header.stamp = ros::Time(0);
   pathVehicle.id = i;
   pathVehicle.type = visualization_msgs::Marker::CUBE;
@@ -138,4 +155,16 @@ void Path::addVehicle(const Node3D& node, int i) {
   pathVehicle.pose.position.y = node.getY() * Constants::cellSize;
   pathVehicle.pose.orientation = tf::createQuaternionMsgFromYaw(node.getT());
   pathVehicles.markers.push_back(pathVehicle);
+}
+
+void Path::addVehiclePose(const Node3D& node) {
+  geometry_msgs::PoseStamped vehicle_pose;
+  vehicle_pose.header.frame_id = "map";
+  vehicle_pose.header.stamp = ros::Time::now();
+
+  vehicle_pose.pose.position.x = node.getX() * Constants::cellSize;
+  vehicle_pose.pose.position.y = node.getY() * Constants::cellSize;
+  vehicle_pose.pose.position.z = 0;
+  vehicle_pose.pose.orientation = tf::createQuaternionMsgFromYaw(node.getT());
+  path.poses.push_back(vehicle_pose);
 }

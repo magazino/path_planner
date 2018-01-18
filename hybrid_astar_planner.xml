@@ -1,0 +1,5 @@
+<library path="lib/libhybrid_astar_planner_plugin">
+  <class name="hybrid_astar/HybridAStarPlanner" type="HybridAStar::HybridAStarPlanner" base_class_type="nav_core::BaseGlobalPlanner">
+    <description>Move_base global planner plugin for HybridAStar planner.</description>
+  </class>
+</library>

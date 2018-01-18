@@ -41,7 +41,7 @@ class Path {
     pubPathVehicles = n.advertise<visualization_msgs::MarkerArray>(pathVehicleTopic, 1);
 
     // CONFIGURE THE CONTAINER
-    path.header.frame_id = "path";
+    path.header.frame_id = "map";
   }
 
   //  // __________
@@ -59,6 +59,11 @@ class Path {
   */
   void updatePath(std::vector<Node3D> nodePath);
   /*!
+     \brief Given a sequence of nodes the path will be updated
+     \param nodePath path nodes to the goal
+  */
+  void generatePath(std::vector<Node3D> nodePath);
+  /*!
      \brief Adds a segment to the path
      \param node a 3D node
   */
@@ -75,6 +80,14 @@ class Path {
      \param i a parameter for counting the number of nodes
   */
   void addVehicle(const Node3D& node, int i);
+  /*!
+     \brief Adds a vehicle pose to the path
+     \param node a 3D node
+  */
+  void addVehiclePose(const Node3D& node);
+
+  /// returns the current path
+  nav_msgs::Path getPath() {return path;}
 
   // ______________
   // PUBLISH METHODS

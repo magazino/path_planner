@@ -119,7 +119,7 @@ void Visualize::publishNode2DPoses(Node2D& node) {
 //###################################################
 //                                    COST HEATMAP 3D
 //###################################################
-void Visualize::publishNode3DCosts(Node3D* nodes, int width, int height, int depth) {
+void Visualize::publishNode3DCosts(std::unordered_map<int,Node3D>& nodes, int width, int height, int depth) {
   visualization_msgs::MarkerArray costCubes;
   visualization_msgs::Marker costCube;
 
@@ -211,7 +211,7 @@ void Visualize::publishNode3DCosts(Node3D* nodes, int width, int height, int dep
 //###################################################
 //                                    COST HEATMAP 2D
 //###################################################
-void Visualize::publishNode2DCosts(Node2D* nodes, int width, int height) {
+void Visualize::publishNode2DCosts(std::unordered_map<int,Node2D>& nodes, int width, int height) {
   visualization_msgs::MarkerArray costCubes;
   visualization_msgs::Marker costCube;
 

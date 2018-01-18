@@ -1,6 +1,8 @@
 #ifndef ALGORITHM_H
 #define ALGORITHM_H
 
+#include <unordered_map>
+
 #include <ompl/base/spaces/ReedsSheppStateSpace.h>
 #include <ompl/base/spaces/DubinsStateSpace.h>
 #include <ompl/base/spaces/SE2StateSpace.h>
@@ -32,8 +34,8 @@ class Algorithm {
 
      \param start the start pose
      \param goal the goal pose
-     \param nodes3D the array of 3D nodes representing the configuration space C in R^3
-     \param nodes2D the array of 2D nodes representing the configuration space C in R^2
+     \param nodes3D map of index -> node of 3D nodes representing the configuration space C in R^3
+     \param nodes2D map of index -> node of 2D nodes representing the configuration space C in R^2
      \param width the width of the grid in number of cells
      \param height the height of the grid in number of cells
      \param configurationSpace the lookup of configurations and their spatial occupancy enumeration
@@ -43,8 +45,8 @@ class Algorithm {
   */
   static Node3D* hybridAStar(Node3D& start,
                              const Node3D& goal,
-                             Node3D* nodes3D,
-                             Node2D* nodes2D,
+                             std::unordered_map<int,Node3D>& nodes3D,
+                             std::unordered_map<int,Node2D>& nodes2D,
                              int width,
                              int height,
                              CollisionDetection& configurationSpace,

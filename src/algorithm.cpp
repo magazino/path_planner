@@ -5,7 +5,7 @@
 using namespace HybridAStar;
 
 float aStar(Node2D& start, Node2D& goal, Node2D* nodes2D, int width, int height, CollisionDetection& configurationSpace, Visualize& visualization);
-void updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, float* dubinsLookup, int width, int height, CollisionDetection& configurationSpace, Visualize& visualization);
+void updateH(Node3D& start, const Node3D& goal, std::unordered_map<int,Node2D>& nodes2D, float* dubinsLookup, int width, int height, CollisionDetection& configurationSpace, Visualize& visualization);
 Node3D* dubinsShot(Node3D& start, const Node3D& goal, CollisionDetection& configurationSpace);
 
 //###################################################
@@ -30,8 +30,8 @@ struct CompareNodes {
 //###################################################
 Node3D* Algorithm::hybridAStar(Node3D& start,
                                const Node3D& goal,
-                               Node3D* nodes3D,
-                               Node2D* nodes2D,
+                               std::unordered_map<int,Node3D>& nodes3D,
+                               std::unordered_map<int,Node2D>& nodes2D,
                                int width,
                                int height,
                                CollisionDetection& configurationSpace,
@@ -69,6 +69,11 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   Node3D* nSucc;
 
   // float max = 0.f;
+
+  // CHECK FOR TRACE BREAKS
+  const Node3D* traced_node;
+  bool loop_found = false;
+  std::set<int> trace;
 
   // continue until O empty
   while (!O.empty()) {
@@ -124,6 +129,15 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
 
     // pop node with lowest cost from priority queue
     nPred = O.top();
+//    if (nPred->getPred()) {
+//      ROS_DEBUG_STREAM("[3D Astar] nPred idx: "<<nPred->getIdx()<<" predecessor: "<<nPred->getPred()->getIdx()<<" with coordinates: "<<nPred->getX()<<" , "<<nPred->getY()
+//                      <<" G: "<<nPred->getG()<<" H: "<<nPred->getH()<<" total(C): "<<nPred->getC()
+//                      <<" distance to goal: "<<std::sqrt(std::pow(goal.getX()-nPred->getX(),2) + std::pow(goal.getY()-nPred->getY(),2) ));
+//      if (nPred->getIdx() == nPred->getPred()->getIdx()) {
+//        ROS_DEBUG_STREAM("[3D Astar] SAME PRED AND AFTER IDX(loop)! "
+//                         "coords of current: "<<nPred->getX()<<" , "<<nPred->getY()<<" previous: "<<nPred->getPred()->getX()<<" , "<<nPred->getPred()->getY());
+//      }
+//    }
     // set index
     iPred = nPred->setIdx(width, height);
     iterations++;
@@ -138,14 +152,14 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
     // _____________________________
     // LAZY DELETION of rewired node
     // if there exists a pointer this node has already been expanded
-    if (nodes3D[iPred].isClosed()) {
+    if (nodes3D.find( iPred ) != nodes3D.end() && nodes3D[iPred].isClosed()) {
       // pop node from the open list and start with a fresh node
       O.pop();
       continue;
     }
     // _________________
     // EXPANSION OF NODE
-    else if (nodes3D[iPred].isOpen()) {
+    else if (nodes3D.find(iPred) != nodes3D.end() && nodes3D[iPred].isOpen() ) {
       // add node to closed list
       nodes3D[iPred].close();
       // remove node from open list
@@ -155,6 +169,8 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
       // GOAL TEST
       if (*nPred == goal || iterations > Constants::iterations) {
         // DEBUG
+        if (iterations > Constants::iterations)
+          ROS_WARN_STREAM("Exceeded maximum number of iterations, returning path found so far");
         return nPred;
       }
 
@@ -169,6 +185,7 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
           if (nSucc != nullptr && *nSucc == goal) {
             //DEBUG
             // std::cout << "max diff " << max << std::endl;
+            ROS_INFO("Dubins shot succeded, arrived at goal");
             return nSucc;
           }
         }
@@ -182,49 +199,77 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
           iSucc = nSucc->setIdx(width, height);
 
           // ensure successor is on grid and traversable
-          if (nSucc->isOnGrid(width, height) && configurationSpace.isTraversable(nSucc)) {
+          if (nSucc->isOnGrid(width, height)) {
 
-            // ensure successor is not on closed list or it has the same index as the predecessor
-            if (!nodes3D[iSucc].isClosed() || iPred == iSucc) {
+            if (configurationSpace.isTraversable(nSucc)) {
 
-              // calculate new G value
-              nSucc->updateG();
-              newG = nSucc->getG();
+              // ensure successor is not on closed list or it has the same index as the predecessor
+              // if it has not been explored yet, it is not in the map
+               if ( (nodes3D.find(iSucc) != nodes3D.end() && !nodes3D[iSucc].isClosed()) || nodes3D.find(iSucc) == nodes3D.end() || iPred == iSucc) {
 
-              // if successor not on open list or found a shorter way to the cell
-              if (!nodes3D[iSucc].isOpen() || newG < nodes3D[iSucc].getG() || iPred == iSucc) {
+                // calculate new G value
+                nSucc->updateG();
+                newG = nSucc->getG();
 
-                // calculate H value
-                updateH(*nSucc, goal, nodes2D, dubinsLookup, width, height, configurationSpace, visualization);
+                if (nodes3D.find(iSucc) == nodes3D.end()) {
+                  nodes3D[iSucc] = Node3D();
+                }
 
-                // if the successor is in the same cell but the C value is larger
-                if (iPred == iSucc && nSucc->getC() > nPred->getC() + Constants::tieBreaker) {
+                // trace the path to prevent loops from occuring (will fail to trace and smooth path otherwise)
+                traced_node = nPred->getPred();
+                while (traced_node) {
+                  trace.insert(traced_node->getIdx());
+                  traced_node = traced_node->getPred();
+                }
+                if (trace.find(iSucc) != trace.end()) {
+                  ROS_WARN_STREAM("[3D Astar] LOOP FOUND for "<<nSucc->getX()<<" , "<<nSucc->getY());
+                  loop_found = true;
+                }
+
+                // if successor not on open list or found a shorter way to the cell
+                if ( nodes3D.find(iSucc) == nodes3D.end() || (nodes3D.find(iSucc) != nodes3D.end() && !nodes3D[iSucc].isOpen()) ||
+                     (nodes3D.find(iSucc) != nodes3D.end() && newG < nodes3D[iSucc].getG()) || iPred == iSucc && !loop_found) {
+
+                  // calculate H value
+                  updateH(*nSucc, goal, nodes2D, dubinsLookup, width, height, configurationSpace, visualization);
+
+                  // if the successor is in the same cell but the C value is larger
+                  if (iPred == iSucc && nSucc->getC() > nPred->getC() + Constants::tieBreaker) {
+                    delete nSucc;
+                    continue;
+                  }
+                  // if successor is in the same cell and the C value is lower, set predecessor to predecessor of predecessor
+                  else if (iPred == iSucc && nSucc->getC() <= nPred->getC() + Constants::tieBreaker) {
+//                    ROS_DEBUG_STREAM("[3D Astar] Updating index "<<iPred<<" with new, better node at: "<<nSucc->getX()<<" , "<<nSucc->getY()<<
+//                                    " and new cost: "<<nSucc->getC()<<" old cost: "<<nPred->getC());
+                    nSucc->setPred(nPred->getPred());
+                  }
+
+                  // this should never happen since we check the entire path all the time
+                  if (nSucc->getPred() == nSucc) {
+                    ROS_WARN_STREAM("LOOPING");
+                  }
+
+                  // put successor on open list
+                  nSucc->open();
+                  nodes3D[iSucc] = *nSucc;
+                  O.push(&nodes3D[iSucc]);
+//                  ROS_DEBUG_STREAM("[3D Astar] Set/updated id: "<<iSucc<<" with node position: "<<nSucc->getX()<<" , "<<nSucc->getY()<<" to score: "<<nSucc->getC()
+//                                  <<" and goal distance: "<<std::sqrt(std::pow(goal.getX()-nSucc->getX(),2) + std::pow(goal.getY()-nSucc->getY(),2) ));
                   delete nSucc;
-                  continue;
-                }
-                // if successor is in the same cell and the C value is lower, set predecessor to predecessor of predecessor
-                else if (iPred == iSucc && nSucc->getC() <= nPred->getC() + Constants::tieBreaker) {
-                  nSucc->setPred(nPred->getPred());
-                }
-
-                if (nSucc->getPred() == nSucc) {
-                  std::cout << "looping";
-                }
-
-                // put successor on open list
-                nSucc->open();
-                nodes3D[iSucc] = *nSucc;
-                O.push(&nodes3D[iSucc]);
-                delete nSucc;
+                } else { delete nSucc; }
               } else { delete nSucc; }
             } else { delete nSucc; }
-          } else { delete nSucc; }
+          }
         }
+
+        trace.clear();
       }
     }
   }
 
   if (O.empty()) {
+    ROS_ERROR_STREAM("[3D Astar] Search graph exhausted, no solution found");
     return nullptr;
   }
 
@@ -236,7 +281,7 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
 //###################################################
 float aStar(Node2D& start,
             Node2D& goal,
-            Node2D* nodes2D,
+            std::unordered_map<int,Node2D>& nodes2D,
             int width,
             int height,
             CollisionDetection& configurationSpace,
@@ -247,8 +292,9 @@ float aStar(Node2D& start,
   float newG;
 
   // reset the open and closed list
-  for (int i = 0; i < width * height; ++i) {
-    nodes2D[i].reset();
+  for (std::unordered_map<int, Node2D>::iterator it = nodes2D.begin(); it != nodes2D.end(); ++it)
+  {
+    it->second.reset();
   }
 
   // VISUALIZATION DELAY
@@ -279,14 +325,16 @@ float aStar(Node2D& start,
     // _____________________________
     // LAZY DELETION of rewired node
     // if there exists a pointer this node has already been expanded
-    if (nodes2D[iPred].isClosed()) {
+    if (nodes2D.find(iPred) != nodes2D.end() && nodes2D[iPred].isClosed()) {
       // pop node from the open list and start with a fresh node
       O.pop();
       continue;
     }
     // _________________
     // EXPANSION OF NODE
-    else if (nodes2D[iPred].isOpen()) {
+    // have to make sure the node is actually not in the map yet
+    else if (nodes2D.find(iPred) != nodes2D.end() && nodes2D[iPred].isOpen()) {
+
       // add node to closed list
       nodes2D[iPred].close();
       nodes2D[iPred].discover();
@@ -304,6 +352,8 @@ float aStar(Node2D& start,
       // _________
       // GOAL TEST
       if (*nPred == goal) {
+//        ROS_DEBUG_STREAM("[2D Astar] Goal found with C: "<<nPred->getC());
+        visualization.clear2D();
         return nPred->getG();
       }
       // ____________________
@@ -320,13 +370,15 @@ float aStar(Node2D& start,
           // ensure successor is on grid ROW MAJOR
           // ensure successor is not blocked by obstacle
           // ensure successor is not on closed list
-          if (nSucc->isOnGrid(width, height) &&  configurationSpace.isTraversable(nSucc) && !nodes2D[iSucc].isClosed()) {
+          if (nSucc->isOnGrid(width, height) &&  configurationSpace.isTraversable(nSucc) &&
+              (nodes2D.find(iSucc)==nodes2D.end() || ( nodes2D.find(iSucc)!=nodes2D.end() && !nodes2D[iSucc].isClosed())) ) {
             // calculate new G value
             nSucc->updateG();
             newG = nSucc->getG();
 
-            // if successor not on open list or g value lower than before put it on open list
-            if (!nodes2D[iSucc].isOpen() || newG < nodes2D[iSucc].getG()) {
+            // if successor not on open list or g value lower than before put it on open list (cost difference needs to be at least above the step threshold)
+            if ( (nodes2D.find(iSucc) != nodes2D.end() && (!nodes2D[iSucc].isOpen() || std::abs(newG - nodes2D[iSucc].getG()) > HybridAStar::Constants::twoD_astar_scaling) )
+                 || nodes2D.find(iSucc) == nodes2D.end() ) {
               // calculate the H value
               nSucc->updateH(goal);
               // put successor on open list
@@ -341,14 +393,19 @@ float aStar(Node2D& start,
     }
   }
 
+  if (Constants::visualization2D)
+    visualization.clear2D();
+
   // return large number to guide search away
+  ROS_ERROR_STREAM("[2D Astar] Path to goal not found");
   return 1000;
 }
 
 //###################################################
 //                                         COST TO GO
 //###################################################
-void updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, float* dubinsLookup, int width, int height, CollisionDetection& configurationSpace, Visualize& visualization) {
+void updateH(Node3D& start, const Node3D& goal, std::unordered_map<int,Node2D>& nodes2D, float* dubinsLookup, int width,
+             int height, CollisionDetection& configurationSpace, Visualize& visualization) {
   float dubinsCost = 0;
   float reedsSheppCost = 0;
   float twoDCost = 0;
@@ -414,6 +471,11 @@ void updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, float* dubinsLo
     dubinsCost = dubinsPath.distance(dbStart, dbEnd);
   }
 
+//  const int steps = 100;
+//  static int kk = 0;
+//  static ros::WallDuration t;
+//  ros::WallTime t0 = ros::WallTime::now();
+
   // if reversing is active use a
   if (Constants::reverse && !Constants::dubins) {
     //    ros::Time t0 = ros::Time::now();
@@ -430,20 +492,47 @@ void updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, float* dubinsLo
     //    std::cout << "calculated Reed-Sheep Heuristic in ms: " << d * 1000 << std::endl;
   }
 
+//  t += ros::WallTime::now() - t0;
+//  kk++;
+//  if (kk%steps == 0){
+//    ROS_DEBUG("[3D Astar H Update] OMPL took: %f over %i steps", t.toSec(), steps);
+//    t = ros::WallDuration();
+//  }
+
+
   // if twoD heuristic is activated determine shortest path
   // unconstrained with obstacles
-  if (Constants::twoD && !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered()) {
+//  static int kktwo = 0;
+//  static ros::WallDuration ttwo;
+//  ros::WallTime t1 = ros::WallTime::now();
+
+  // need to check whether the given node is in the map at all
+  if (Constants::twoD && ( nodes2D.find((int)start.getY() * width + (int)start.getX()) == nodes2D.end()  ||
+     (nodes2D.find((int)start.getY() * width + (int)start.getX()) != nodes2D.end() &&
+        !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered() ) ) ) {
+
     //    ros::Time t0 = ros::Time::now();
     // create a 2d start node
     Node2D start2d(start.getX(), start.getY(), 0, 0, nullptr);
     // create a 2d goal node
     Node2D goal2d(goal.getX(), goal.getY(), 0, 0, nullptr);
     // run 2d astar and return the cost of the cheapest path for that node
+    if (nodes2D.find((int)start.getY() * width + (int)start.getX()) == nodes2D.end())
+      nodes2D[(int)start.getY() * width + (int)start.getX()] = Node2D();
     nodes2D[(int)start.getY() * width + (int)start.getX()].setG(aStar(goal2d, start2d, nodes2D, width, height, configurationSpace, visualization));
+    if (Constants::visualization2D)
+      visualization.clear2D();
     //    ros::Time t1 = ros::Time::now();
     //    ros::Duration d(t1 - t0);
     //    std::cout << "calculated 2D Heuristic in ms: " << d * 1000 << std::endl;
   }
+
+//  ttwo += ros::WallTime::now() - t1;
+//  kktwo++;
+//  if (kktwo%steps == 0){
+//    ROS_DEBUG("[3D Astar H Update] 2D grid search took: %f over %i steps", ttwo.toSec(), steps);
+//    ttwo = ros::WallDuration();
+//  }
 
   if (Constants::twoD) {
     // offset for same node in cell
@@ -452,6 +541,9 @@ void updateH(Node3D& start, const Node3D& goal, Node2D* nodes2D, float* dubinsLo
     twoDCost = nodes2D[(int)start.getY() * width + (int)start.getX()].getG() - twoDoffset;
 
   }
+
+//  ROS_DEBUG_STREAM("[2D Astar] H: Position: "<<start.getX()<<" , "<<start.getY()<<" heuristic: reedsShepp "<<reedsSheppCost<<" dubins "<<dubinsCost<<" twoD: "<<twoDCost<<
+//                  " C: "<<start.getC()<<" distance to goal: "<<std::sqrt(std::pow(goal.getX()-start.getX(),2) + std::pow(goal.getY()-start.getY(),2) ) );
 
   // return the maximum of the heuristics, making the heuristic admissable
   start.setH(std::max(reedsSheppCost, std::max(dubinsCost, twoDCost)));
@@ -501,6 +593,7 @@ Node3D* dubinsShot(Node3D& start, const Node3D& goal, CollisionDetection& config
       i++;
     } else {
       //      std::cout << "Dubins shot collided, discarding the path" << "\n";
+      ROS_WARN_STREAM("Dubins shot collided, discarding the path");
       // delete all nodes
       delete [] dubinsNodes;
       return nullptr;

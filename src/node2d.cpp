@@ -5,8 +5,11 @@ using namespace HybridAStar;
 // possible directions
 const int Node2D::dir = 8;
 // possible movements
-const int Node2D::dx[] = { -1, -1, 0, 1, 1, 1, 0, -1 };
-const int Node2D::dy[] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+const int scaling = HybridAStar::Constants::twoD_astar_scaling;
+const int Node2D::dx[] = { -scaling, -scaling, 0, scaling, scaling, scaling, 0, -scaling };
+const int Node2D::dy[] = { 0, scaling, scaling, scaling, 0, -scaling, -scaling, -scaling };
+//const int Node2D::dx[] = { -0.05, -0.05, 0, 0.05, 0.05, 0.05, 0, -0.05 };
+//const int Node2D::dy[] = { 0, 0.05, 0.05, 0.05, 0, -0.05, -0.05, -0.05 };
 
 //###################################################
 //                                         IS ON GRID
@@ -28,5 +31,6 @@ Node2D* Node2D::createSuccessor(const int i) {
 //                                 2D NODE COMPARISON
 //###################################################
 bool Node2D::operator == (const Node2D& rhs) const {
-  return x == rhs.x && y == rhs.y;
+//  return x == rhs.x && y == rhs.y;
+  return std::abs(x-rhs.x) < scaling && std::abs(y-rhs.y) < scaling;
 }

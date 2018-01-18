@@ -3,6 +3,8 @@
 
 #include "dubins.h"
 #include "constants.h"
+#include "signal.h"
+#include <ros/ros.h>
 
 namespace HybridAStar {
 namespace Lookup {
@@ -82,8 +84,9 @@ inline void collisionLookup(Constants::config* lookup) {
   std::cout << "I am building the collision lookup table...";
   // cell size
   const float cSize = Constants::cellSize;
-  // bounding box size length/width
+  // bounding box size length/width 
   const int size = Constants::bbSize;
+  ROS_INFO_STREAM("Bounding box size [cells]: "<<size);
 
   struct point {
     double x;
@@ -95,8 +98,9 @@ inline void collisionLookup(Constants::config* lookup) {
   //center of the rectangle
   point c;
   point temp;
-  // points of the rectangle
+  // points of the rectangle [cells]
   point p[4];
+  // rotated points of the rectangle [cells]
   point nP[4];
 
   // turning angle
@@ -104,7 +108,7 @@ inline void collisionLookup(Constants::config* lookup) {
 
   // ____________________________
   // VARIABLES FOR GRID TRAVERSAL
-  // vector for grid traversal
+  // vector for grid traversal (t: traversal distance)
   point t;
   point start;
   point end;
@@ -136,8 +140,11 @@ inline void collisionLookup(Constants::config* lookup) {
   // generate all discrete positions within one cell
   for (int i = 0; i < positionResolution; ++i) {
     for (int j = 0; j < positionResolution; ++j) {
+      // did not consider cell sizes before and implicitely assumed 1.f
       points[positionResolution * i + j].x = 1.f / positionResolution * j;
       points[positionResolution * i + j].y = 1.f / positionResolution * i;
+//      points[positionResolution * i + j].x = cSize / positionResolution * j;
+//      points[positionResolution * i + j].y = cSize / positionResolution * i;
     }
   }
 
@@ -147,9 +154,11 @@ inline void collisionLookup(Constants::config* lookup) {
     theta = 0;
 
     // set points of rectangle
+    // todo: should probably be cell coordinates as well, implicitely assumes 1.f otherwise
     c.x = (double)size / 2 + points[q].x;
     c.y = (double)size / 2 + points[q].y;
 
+    // outer points of bounding rectangle (cell coordinates)
     p[0].x = c.x - Constants::length / 2 / cSize;
     p[0].y = c.y - Constants::width / 2 / cSize;
 
@@ -161,6 +170,8 @@ inline void collisionLookup(Constants::config* lookup) {
 
     p[3].x = c.x + Constants::length / 2 / cSize;
     p[3].y = c.y - Constants::width / 2 / cSize;
+
+    bool tieOccured = false;
 
     for (int o = 0; o < Constants::headings; ++o) {
       if (DEBUG) { std::cout << "\ndegrees: " << theta * 180.f / M_PI << std::endl; }
@@ -186,9 +197,12 @@ inline void collisionLookup(Constants::config* lookup) {
       // create the next angle
       theta += Constants::deltaHeadingRad;
 
+      // draw only if all four sides have been traced succesfully
+      tieOccured = false;
+
       // cell traversal clockwise
       for (int k = 0; k < 4; ++k) {
-        // create the vectors clockwise
+        // create the vectors (sides of bounding robot rectangle) clockwise
         if (k < 3) {
           start = nP[k];
           end = nP[k + 1];
@@ -200,24 +214,26 @@ inline void collisionLookup(Constants::config* lookup) {
         //set indexes
         X = (int)start.x;
         Y = (int)start.y;
-        //      std::cout << "StartCell: " << X << "," << Y << std::endl;
+        if (DEBUG)
+          std::cout << "StartCell: " << X << "," << Y << std::endl;
         cSpace[Y * size + X] = true;
+        // traversal distance (ray equation: start + tv)
         t.x = end.x - start.x;
         t.y = end.y - start.y;
         stepX = sign(t.x);
         stepY = sign(t.y);
 
-        // width and height normalized by t
+        // step lengths -> simple because we use the total distance as t
         if (t.x != 0) {
           tDeltaX = 1.f / std::abs(t.x);
         } else {
-          tDeltaX = 1000;
+          tDeltaX = 100000;
         }
 
         if (t.y != 0) {
           tDeltaY = 1.f / std::abs(t.y);
         } else {
-          tDeltaY = 1000;
+          tDeltaY = 100000;
         }
 
         // set maximum traversal values
@@ -255,6 +271,18 @@ inline void collisionLookup(Constants::config* lookup) {
           } else {
             // this SHOULD NOT happen
             std::cout << "\n--->tie occured, please check for error in script\n";
+            if (tMaxX < tMaxY && std::abs(X + stepX - (int)end.x) > std::abs(X - (int)end.x)) {
+              ROS_WARN_STREAM("During raytracing, x step would overshoot at the last point while traversing side: "<<k<<" at angle "<<theta * 180.f / M_PI);
+            } else if (tMaxY < tMaxX && std::abs(Y + stepY - (int)end.y) > std::abs(Y - (int)end.y)) {
+              ROS_WARN_STREAM("During raytracing, y step would overshoot at the last point while traversing side: "<<k<<" at angle "<<theta * 180.f / M_PI);
+            } else {
+              // something else has failed, error during traversal?:
+              ROS_WARN_STREAM("Failed while traversing side "<<k<<" with tMaxX: "<<tMaxX<<" tMaxY:"<<tMaxY<<" x after step abs "<< std::abs(X + stepX - (int)end.x)
+                              <<" x before step abs: "<<  std::abs(X - (int)end.x)<<" y after step abs: "<< std::abs(Y + stepY - (int)end.y)
+                              <<" y before step abs: "<<std::abs(Y - (int)end.y) );
+            }
+//            raise(SIGSEGV);
+            tieOccured = true;
             break;
           }
         }
@@ -303,7 +331,7 @@ inline void collisionLookup(Constants::config* lookup) {
 
       lookup[q * Constants::headings + o].length = count;
 
-      if (DEBUG) {
+      if (DEBUG && tieOccured) {
         //DEBUG
         for (int i = 0; i < size; ++i) {
           std::cout << "\n";
@@ -324,10 +352,37 @@ inline void collisionLookup(Constants::config* lookup) {
           std::cout << "[" << i << "]\t" << lookup[q * Constants::headings + o].pos[i].x << " | " << lookup[q * Constants::headings + o].pos[i].y << std::endl;
         }
       }
+
+      // debug the final lookup tables
+//      if (DEBUG) {
+//        for (int subcellpos=0; subcellpos<Constants::positions; ++subcellpos) {
+//          for (int heading=0; heading<Constants::headings; ++heading) {
+//            ROS_INFO_STREAM("Checking subposition: "<<subcellpos<<" for heading "<<heading);
+//            int running_x = 0;
+//            int running_y = 0;
+//            for (int occupied=0; occupied<lookup[subcellpos * Constants::headings + heading].count; ++occupied) {
+//              while (running_x < lookup[subcellpos * Constants::headings + heading].pos[count].x) {
+//                while (running_y < lookup[subcellpos * Constants::headings + heading].pos[count].y) {
+//                  std::cout << ".";
+//                  ++running_y;
+//                }
+//                std::cout << "\n";
+//                running_y = 0;
+//                ++ running_x;
+//              }
+//              std::cout << "#";
+//            }
+//          }
+//        }
+//        std::cout<<"\n";
+//      }
+
     }
   }
 
   std::cout << " done!" << std::endl;
+//  raise(SIGSEGV);
+
 }
 
 }
