@@ -1,6 +1,7 @@
 #include "algorithm.h"
 
 #include <boost/heap/binomial_heap.hpp>
+#include <boost/heap/binomial_heap.hpp>
 
 using namespace HybridAStar;
 
@@ -50,6 +51,9 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   ros::Duration d(0.003);
 
   // OPEN LIST AS BOOST IMPLEMENTATION
+  typedef boost::heap::binomial_heap<Node3D*,
+          boost::heap::compare<CompareNodes>
+          > priorityQueue;
   typedef boost::heap::binomial_heap<Node3D*,
           boost::heap::compare<CompareNodes>
           > priorityQueue;

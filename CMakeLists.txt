@@ -15,6 +15,15 @@ else()
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+set(PROFILING_ENABLED=false)
+if(PROFILING_ENABLED==true)
+  link_directories(/usr/local/lib)
+  add_definitions(-DPROFILING_ENABLED=true)
+  # some boost flags to disable long doubles as they crash callgrind when using 1.58
+  add_definitions(-DBOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS=true)
+  add_definitions(-DBOOST_MATH_PROMOTE_DOUBLE_POLICY=false)
+endif()
+
 find_package(catkin REQUIRED COMPONENTS
     roscpp
     rospy
@@ -78,6 +87,10 @@ target_link_libraries(tf_broadcaster ${catkin_LIBRARIES})
 add_executable(hybrid_astar src/main.cpp ${HEADERS} ${SOURCES})
 target_link_libraries(hybrid_astar ${catkin_LIBRARIES})
 target_link_libraries(hybrid_astar ${OMPL_LIBRARIES})
+# gperftolls
+if(PROFILING_ENABLED==true)
+  target_link_libraries(hybrid_astar profiler)
+endif()
 
 add_library(hybrid_astar_planner_plugin src/hybrid_astar_planner_plugin.cpp ${HEADERS} ${SOURCES})
 target_link_libraries(hybrid_astar_planner_plugin ${catkin_LIBRARIES} ${OMPL_LIBRARIES})

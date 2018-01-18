@@ -48,13 +48,11 @@ namespace HybridAStar {
       ROS_INFO("computing path took: %f", t.toSec());
       t = ros::WallDuration();
     }
-//    plan.clear();
-    //plan = path.getPath().poses;
+
     if (path.getPath().poses.size() > 0) {
       std::vector<geometry_msgs::PoseStamped> poses = path.getPath().poses;
       plan = poses;
-      //    std::copy(poses.begin(), poses.end(), plan.begin());
-      //    plan.assign(path.getPath().poses.begin(),path.getPath().poses.end());
+
       ROS_INFO_STREAM("Found plan with "<<plan.size()<<" nodes");
       ROS_INFO_STREAM("The frame_id used for navigation is: "<<path.getPath().header.frame_id);
       ROS_INFO_STREAM("Path points have header frame: "<<path.getPath().poses.front().header.frame_id);
@@ -62,16 +60,11 @@ namespace HybridAStar {
       // create and publish a path message to visualize on RViz
       nav_msgs::Path gui_path;
       gui_path.header.frame_id = "map";
-      //    gui_path.header.stamp = path.getPath().header.stamp;
       gui_path.poses = poses;
-      //    std::copy(poses.begin(), poses.end(), gui_path.poses.begin());
-      //    gui_path.poses.assign(path.getPath().poses.begin(),path.getPath().poses.end());
       plan_pub_.publish(gui_path);
-      ROS_INFO_STREAM("Publishing plan with "<<gui_path.poses.size()<<" nodes");
-      ROS_INFO_STREAM("FIRST POINT: "<<gui_path.poses.front());
     }
     else {
-      ROS_ERROR_STREAM("[hybrid_astar_planner] generated path has 0 nodes!");
+      ROS_ERROR_STREAM("[hybrid_astar_planner] has generated an empty path!");
     }
     return true;
   }

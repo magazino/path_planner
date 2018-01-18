@@ -118,6 +118,7 @@ class Node2D {
   bool d;
   /// the predecessor pointer
   Node2D* pred;
+
 };
 }
 #endif // NODE2D_H

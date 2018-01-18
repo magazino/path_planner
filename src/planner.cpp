@@ -1,4 +1,8 @@
 #include "planner.h"
+// profiling
+#ifdef PROFILING_ENABLED
+  #include "gperftools/profiler.h"
+#endif
 
 using namespace HybridAStar;
 
@@ -56,7 +60,7 @@ void PlannerBase::setMap(const nav_msgs::OccupancyGrid& map) {
 
   voronoiDiagram.initializeMap(width, height, binMap);
   voronoiDiagram.update();
-//  voronoiDiagram.visualize("/home/denisov/Documents/VoronoiTest/test.pgm");
+  voronoiDiagram.visualize("/home/denisov/Documents/VoronoiTest/test.pgm");
   t = ros::WallTime::now() - t0;
   ROS_WARN("computing vornoi took: %f", t.toSec());
 //  ros::Time t1 = ros::Time::now();
@@ -134,6 +138,10 @@ void PlannerBase::plan() {
   // if a start as well as goal are defined go ahead and plan
   if (validStart && validGoal) {
 
+#ifdef PROFILING_ENABLED
+    ProfilerStart("path_planner.log");
+#endif
+
     ROS_INFO_STREAM("Beginning planning");
     // ___________________________
     // LISTS ALLOWCATED ROW MAJOR ORDER
@@ -201,6 +209,9 @@ void PlannerBase::plan() {
     smoother.smoothPath(voronoiDiagram);
     // CREATE THE UPDATED PATH
     smoothedPath.updatePath(smoother.getPath());
+    // overwrite with smoothed path
+    path.clear();
+    path.generatePath(smoother.getPath());
     ros::Time t1 = ros::Time::now();
     ros::Duration d(t1 - t0);
     std::cout << "TIME in ms: " << d * 1000 << std::endl;
@@ -216,9 +227,9 @@ void PlannerBase::plan() {
 //    visualization.publishNode3DCosts(nodes3D, width, height, depth);
 //    visualization.publishNode2DCosts(nodes2D, width, height);
 
-
-//    delete [] nodes3D;
-//    delete [] nodes2D;
+#ifdef PROFILING
+    ProfilerStop();
+#endif
 
   } else {
     std::cout << "missing goal or start" << std::endl;
