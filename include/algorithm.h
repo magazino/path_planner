@@ -53,6 +53,13 @@ class Algorithm {
                              float* dubinsLookup,
                              Visualize& visualization);
 
+  static float aStar(Node2D& start,
+                     Node2D& goal,
+                     std::unordered_map<int,Node2D>& nodes2D,
+                     int width,
+                     int height,
+                     CollisionDetection& configurationSpace,
+                     Visualize& visualization);
 };
 }
 #endif // ALGORITHM_H

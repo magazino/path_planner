@@ -54,9 +54,6 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   typedef boost::heap::binomial_heap<Node3D*,
           boost::heap::compare<CompareNodes>
           > priorityQueue;
-  typedef boost::heap::binomial_heap<Node3D*,
-          boost::heap::compare<CompareNodes>
-          > priorityQueue;
   priorityQueue O;
 
   // update h value
@@ -78,6 +75,11 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
   const Node3D* traced_node;
   bool loop_found = false;
   std::set<int> trace;
+
+  // profiling the analytic solution (Dubins shot)
+//  static ros::WallDuration t;
+//  const int steps = 100;
+//  static int kk = 0;
 
   // continue until O empty
   while (!O.empty()) {
@@ -175,6 +177,8 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
         // DEBUG
         if (iterations > Constants::iterations)
           ROS_WARN_STREAM("Exceeded maximum number of iterations, returning path found so far");
+
+//        ROS_INFO("[3D Astar] Dubins shot: %f performed %i times", t.toSec(), kk);
         return nPred;
       }
 
@@ -184,12 +188,19 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
         // _______________________
         // SEARCH WITH DUBINS SHOT
         if (Constants::dubinsShot && nPred->isInRange(goal) && nPred->getPrim() < 3) {
+
+//          ros::WallTime t0 = ros::WallTime::now();
+
           nSucc = dubinsShot(*nPred, goal, configurationSpace);
+
+//          t += ros::WallTime::now() - t0;
+//          kk++;
 
           if (nSucc != nullptr && *nSucc == goal) {
             //DEBUG
             // std::cout << "max diff " << max << std::endl;
             ROS_INFO("Dubins shot succeded, arrived at goal");
+//            ROS_INFO("[3D Astar] Dubins shot: %f performed %i times", t.toSec(), kk);
             return nSucc;
           }
         }
@@ -283,7 +294,7 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
 //###################################################
 //                                        2D A*
 //###################################################
-float aStar(Node2D& start,
+float Algorithm::aStar(Node2D& start,
             Node2D& goal,
             std::unordered_map<int,Node2D>& nodes2D,
             int width,
@@ -296,10 +307,10 @@ float aStar(Node2D& start,
   float newG;
 
   // reset the open and closed list
-  for (std::unordered_map<int, Node2D>::iterator it = nodes2D.begin(); it != nodes2D.end(); ++it)
-  {
-    it->second.reset();
-  }
+//  for (std::unordered_map<int, Node2D>::iterator it = nodes2D.begin(); it != nodes2D.end(); ++it)
+//  {
+//    it->second.reset();
+//  }
 
   // VISUALIZATION DELAY
   ros::Duration d(0.001);
@@ -355,14 +366,14 @@ float aStar(Node2D& start,
 
       // _________
       // GOAL TEST
-      if (*nPred == goal) {
-//        ROS_DEBUG_STREAM("[2D Astar] Goal found with C: "<<nPred->getC());
-        visualization.clear2D();
-        return nPred->getG();
-      }
+//      if (*nPred == goal) {
+////        ROS_DEBUG_STREAM("[2D Astar] Goal found with C: "<<nPred->getC());
+//        visualization.clear2D();
+//        return nPred->getG();
+//      }
       // ____________________
       // CONTINUE WITH SEARCH
-      else {
+//      else {
         // _______________________________
         // CREATE POSSIBLE SUCCESSOR NODES
         for (int i = 0; i < Node2D::dir; i++) {
@@ -381,7 +392,7 @@ float aStar(Node2D& start,
             newG = nSucc->getG();
 
             // if successor not on open list or g value lower than before put it on open list (cost difference needs to be at least above the step threshold)
-            if ( (nodes2D.find(iSucc) != nodes2D.end() && (!nodes2D[iSucc].isOpen() || std::abs(newG - nodes2D[iSucc].getG()) > HybridAStar::Constants::twoD_astar_scaling) )
+            if ( (nodes2D.find(iSucc) != nodes2D.end() && (!nodes2D[iSucc].isOpen() || newG < nodes2D[iSucc].getG()))
                  || nodes2D.find(iSucc) == nodes2D.end() ) {
               // calculate the H value
               nSucc->updateH(goal);
@@ -393,7 +404,7 @@ float aStar(Node2D& start,
             } else { delete nSucc; }
           } else { delete nSucc; }
         }
-      }
+//      }
     }
   }
 
@@ -401,7 +412,7 @@ float aStar(Node2D& start,
     visualization.clear2D();
 
   // return large number to guide search away
-  ROS_ERROR_STREAM("[2D Astar] Path to goal not found");
+//  ROS_ERROR_STREAM("[2D Astar] Path to goal not found");
   return 1000;
 }
 
@@ -511,25 +522,25 @@ void updateH(Node3D& start, const Node3D& goal, std::unordered_map<int,Node2D>& 
 //  ros::WallTime t1 = ros::WallTime::now();
 
   // need to check whether the given node is in the map at all
-  if (Constants::twoD && ( nodes2D.find((int)start.getY() * width + (int)start.getX()) == nodes2D.end()  ||
-     (nodes2D.find((int)start.getY() * width + (int)start.getX()) != nodes2D.end() &&
-        !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered() ) ) ) {
+//  if (Constants::twoD && ( nodes2D.find((int)start.getY() * width + (int)start.getX()) == nodes2D.end()  ||
+//     (nodes2D.find((int)start.getY() * width + (int)start.getX()) != nodes2D.end() &&
+//        !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered() ) ) ) {
 
-    //    ros::Time t0 = ros::Time::now();
-    // create a 2d start node
-    Node2D start2d(start.getX(), start.getY(), 0, 0, nullptr);
-    // create a 2d goal node
-    Node2D goal2d(goal.getX(), goal.getY(), 0, 0, nullptr);
-    // run 2d astar and return the cost of the cheapest path for that node
-    if (nodes2D.find((int)start.getY() * width + (int)start.getX()) == nodes2D.end())
-      nodes2D[(int)start.getY() * width + (int)start.getX()] = Node2D();
-    nodes2D[(int)start.getY() * width + (int)start.getX()].setG(aStar(goal2d, start2d, nodes2D, width, height, configurationSpace, visualization));
-    if (Constants::visualization2D)
-      visualization.clear2D();
-    //    ros::Time t1 = ros::Time::now();
-    //    ros::Duration d(t1 - t0);
-    //    std::cout << "calculated 2D Heuristic in ms: " << d * 1000 << std::endl;
-  }
+//    //    ros::Time t0 = ros::Time::now();
+//    // create a 2d start node
+//    Node2D start2d(start.getX(), start.getY(), 0, 0, nullptr);
+//    // create a 2d goal node
+//    Node2D goal2d(goal.getX(), goal.getY(), 0, 0, nullptr);
+//    // run 2d astar and return the cost of the cheapest path for that node
+//    if (nodes2D.find((int)start.getY() * width + (int)start.getX()) == nodes2D.end())
+//      nodes2D[(int)start.getY() * width + (int)start.getX()] = Node2D();
+//    nodes2D[(int)start.getY() * width + (int)start.getX()].setG(aStar(goal2d, start2d, nodes2D, width, height, configurationSpace, visualization));
+//    if (Constants::visualization2D)
+//      visualization.clear2D();
+//    //    ros::Time t1 = ros::Time::now();
+//    //    ros::Duration d(t1 - t0);
+//    //    std::cout << "calculated 2D Heuristic in ms: " << d * 1000 << std::endl;
+//  }
 
 //  ttwo += ros::WallTime::now() - t1;
 //  kktwo++;
@@ -538,13 +549,21 @@ void updateH(Node3D& start, const Node3D& goal, std::unordered_map<int,Node2D>& 
 //    ttwo = ros::WallDuration();
 //  }
 
+//  int idx = start.getIdx();
+  int idx = get2Didx(start.getX(), start.getY(), width);
+
+
   if (Constants::twoD) {
     // offset for same node in cell
     twoDoffset = sqrt(((start.getX() - (long)start.getX()) - (goal.getX() - (long)goal.getX())) * ((start.getX() - (long)start.getX()) - (goal.getX() - (long)goal.getX())) +
                       ((start.getY() - (long)start.getY()) - (goal.getY() - (long)goal.getY())) * ((start.getY() - (long)start.getY()) - (goal.getY() - (long)goal.getY())));
-    twoDCost = nodes2D[(int)start.getY() * width + (int)start.getX()].getG() - twoDoffset;
+    twoDCost = nodes2D[idx].getG() - twoDoffset;
 
+    // just euclidean distance
+//    twoDCost = std::sqrt(std::pow(goal.getX()-start.getX(),2)+std::pow(goal.getY()-start.getY(),2));
   }
+
+//  ROS_INFO_STREAM("2D COST:" << twoDCost<<" from idx: "<<idx<<" other costs: reedsShepp: "<<reedsSheppCost<<" dubins: "<<dubinsCost);
 
 //  ROS_DEBUG_STREAM("[2D Astar] H: Position: "<<start.getX()<<" , "<<start.getY()<<" heuristic: reedsShepp "<<reedsSheppCost<<" dubins "<<dubinsCost<<" twoD: "<<twoDCost<<
 //                  " C: "<<start.getC()<<" distance to goal: "<<std::sqrt(std::pow(goal.getX()-start.getX(),2) + std::pow(goal.getY()-start.getY(),2) ) );

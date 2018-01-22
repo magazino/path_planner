@@ -6,6 +6,12 @@
 #include "constants.h"
 namespace HybridAStar {
 
+// GRID UPSCALING
+/// Node2D grid will be upscaled from the cell3D grid by the factor Constants::twoD_astar_scaling
+inline float discretize2DNodeGrid(const float coordinate) {return ((int)(coordinate/Constants::twoD_astar_scaling)*Constants::twoD_astar_scaling);}
+
+inline int get2Didx(float x, float y, int width) { int idx = (int)(discretize2DNodeGrid(y) * width + discretize2DNodeGrid(x)); return idx;}
+
 /*!
    \brief A two dimensional node class used for the holonomic with obstacles heuristic.
 
@@ -59,7 +65,9 @@ class Node2D {
   /// set the cost-to-come (heuristic value)
   void setH(const float& h) { this->h = h; }
   /// set and get the index of the node in the 2D array
-  int setIdx(int width) { this->idx = y * width + x; return idx;}
+//  int setIdx(int width) { this->idx = y * width + x; return idx;}
+  int setIdx(int width) { this->idx = (int)(discretize2DNodeGrid(y) * width + discretize2DNodeGrid(x)); return idx;}
+
   /// open the node
   void open() { o = true; c = false; }
   /// close the node

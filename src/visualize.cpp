@@ -147,7 +147,7 @@ void Visualize::publishNode3DCosts(std::unordered_map<int,Node3D>& nodes, int wi
       idx = k * width * height + i;
 
       // set the minimum for the cell
-      if (nodes[idx].isClosed() || nodes[idx].isOpen()) {
+      if (nodes.find(idx) != nodes.end() && (nodes[idx].isClosed() || nodes[idx].isOpen())) {
         values[i] = nodes[idx].getC();
       }
     }
@@ -234,7 +234,7 @@ void Visualize::publishNode2DCosts(std::unordered_map<int,Node2D>& nodes, int wi
     values[i] = 1000;
 
     // set the minimum for the cell
-    if (nodes[i].isDiscovered()) {
+    if (nodes.find(i) != nodes.end() && nodes[i].isDiscovered()) {
       values[i] = nodes[i].getG();
 
       // set a new minimum
@@ -249,7 +249,7 @@ void Visualize::publishNode2DCosts(std::unordered_map<int,Node2D>& nodes, int wi
   // PAINT THE CUBES
   for (int i = 0; i < width * height; ++i) {
     // if a value exists continue
-    if (nodes[i].isDiscovered()) {
+    if (nodes.find(i) != nodes.end() && nodes[i].isDiscovered()) {
       count++;
 
       // delete all previous markers

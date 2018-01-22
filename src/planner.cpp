@@ -193,6 +193,19 @@ void PlannerBase::plan() {
     // CLEAR THE PATH
     path.clear();
     smoothedPath.clear();
+    // PRECOMPUTE 2D Costs (ultimately cheaper doing this once instead of each iteration)
+    if (Constants::twoD ) {
+      // create a 2d start node
+      Node2D start2d(nStart.getX(), nStart.getY(), 0, 0, nullptr);
+      // create a 2d goal node
+      Node2D goal2d(nGoal.getX(), nGoal.getY(), 0, 0, nullptr);
+      // run 2d astar and return the cost of the cheapest path for that node
+//      if (nodes2D.find((int)nStart.getY() * width + (int)nStart.getX()) == nodes2D.end())
+//        nodes2D[(int)nStart.getY() * width + (int)nStart.getX()] = Node2D();
+      Algorithm::aStar(goal2d, start2d, nodes2D, width, height, configurationSpace, visualization);
+    }
+    ROS_INFO_STREAM("INITIAL 2D ASTAR COMPLETED");
+
     // FIND THE PATH
     Node3D* nSolution = Algorithm::hybridAStar(nStart, nGoal, nodes3D, nodes2D, width, height, configurationSpace, dubinsLookup, visualization);
     if (!nSolution) {
